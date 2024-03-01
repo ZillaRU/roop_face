@@ -14,7 +14,7 @@
 ## 环境搭建与运行
 - `git clone https://github.com/ZillaRU/roop_face.git`
 - `cd roop_face`
-- 安装必要的包：`pip3 install torch opencv-python-headless flask==2.2.2 insightface`，`pip3 install sophon_arm-3.5.0-py3-none-any.whl`
+- 安装必要的包：`pip3 install torch torchvision opencv-python-headless flask==2.2.2 insightface onnxruntime`，`pip3 install sophon_arm-0.0.0-py3-none-any.whl`
 - [下载bmodel文件](https://drive.google.com/drive/folders/1CnQouxn_95Oggh4ywTAbRDCyLeqzXf6V?usp=sharing)，然后在项目根目录建立`bmodel_files`，把bmodel文件放进去。
 - `python3 app_roop.py`，启动完成后服务在7019端口。
 
