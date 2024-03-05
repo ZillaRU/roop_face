@@ -2,9 +2,7 @@
 
 ## 效果展示
 将source image中的人脸换到target image上。
-<div style="text-align: center;">
-  <img src="https://github.com/ZillaRU/roop_face/assets/25343084/b32ba210-e2ea-4c54-ad19-637d1acc607a" width="500px" alt="张韶涵换脸到油画戴珍珠耳环的少女">
-</div>
+![张韶涵换脸到油画戴珍珠耳环的少女](https://github.com/ZillaRU/roop_face/assets/25343084/4b53a519-8537-4fc4-b91b-85954e06d276)
 
 ## 换脸方案
 - [roop](https://github.com/s0md3v/roop.git) pipeline概述
