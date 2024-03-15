@@ -16,7 +16,7 @@ from .inswappertpu import INSwapper ##############
 # from roop_logging import logger
 
 providers = ["CPUExecutionProvider"]
-
+face_swapper_tpu = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
 
 class FaceRestoration:
     def name(self):
@@ -96,7 +96,6 @@ def swap_face(
     source_face = get_face_single(source_img, face_index=0) #source_face.keys() dict_keys(['bbox', 'kps', 'det_score', 'landmark_3d_68', 'pose', 'landmark_2d_106', 'gender', 'age', 'embedding'])
     if source_face is not None:
         result = target_img
-        face_swapper_tpu = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
         for face_num in faces_index:
             target_face = get_face_single(target_img, face_index=face_num)
             if target_face is not None:

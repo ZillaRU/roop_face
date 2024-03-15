@@ -49,9 +49,9 @@ with gr.Blocks(css=css, title="看图说话") as demo:
         with gr.Row():
             img_input1 = gr.Image(label="人脸图像", value=default_example[0], sources=['upload'], type='pil')
             img_input2 = gr.Image(label="目标图像", value=default_example[1], sources=['upload'], type='pil')
-            use_enhance_orN = gr.Checkbox(label="人像增强", value=True)
-        # with gr.Row():
             img_res = gr.Image(label="换脸图像", interactive=False)
+        with gr.Row():
+            use_enhance_orN = gr.Checkbox(label="人像增强", value=True)
             
 
     # Submit & Clear
