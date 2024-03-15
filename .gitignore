@@ -3,3 +3,5 @@
 *.bmodel
 *.npy
 *.onnx
+tmp
+bmodel*

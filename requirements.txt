@@ -1,0 +1,10 @@
+flask==2.2.2
+transformers==4.30.0
+torchsde
+gradio
+insightface
+onnxruntime
+torch
+torchvision
+opencv-python-headless
+sophon-arm -f sophon_arm-0.0.0-py3-none-any.whl

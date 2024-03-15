@@ -4,6 +4,10 @@ from flask import Flask, request, jsonify
 import base64
 from PIL import Image
 import numpy as np
+
+import logging
+# 设置日志级别
+logging.basicConfig(level=logging.ERROR)
 # engine
 from roop import setup_model, swap_face
 import time
@@ -29,9 +33,7 @@ def swap_face_api():
     src_image = Image.open(src_image_bytes)
     tar_image_bytes = BytesIO(base64.b64decode(tar_image_b64))
     tar_image = Image.open(tar_image_bytes)
-    # except Exception as e:
-    #     print(e)
-    pil_res = swap_face(src_image, tar_image, "./roop/weights/inswapper_128.onnx")
+    pil_res = swap_face(src_image, tar_image)
     buffer = io.BytesIO()
     pil_res.save(buffer, format='JPEG')
     ret_img_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
