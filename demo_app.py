@@ -11,8 +11,8 @@ restorer = setup_model()
 
 def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, restorer_visibility=1.0):
     src_img = source_img.convert('RGB')
-    tar_image = target_img.convert('RGB')
-    pil_res = swap_face(src_image, tar_image)
+    tar_img = target_img.convert('RGB')
+    pil_res = swap_face(src_img, tar_img)
     if use_enhance:
         print(f"Restore face with Codeformer")
         numpy_image = np.array(pil_res)
@@ -29,7 +29,7 @@ def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, resto
 # Description
 title = f"<center><strong><font size='8'>人像换脸(●'◡'●) powered by 1684x <font></strong></center>"
 
-default_example = ["./examples/angelazhang.jpg", "./examples/c.png"]
+default_example = ["./example/angelazhang.jpg", "./example/c.png"]
 
 css = "h1 { text-align: center } .about { text-align: justify; padding-left: 10%; padding-right: 10%; }"
 
