@@ -56,7 +56,6 @@ def setup_model():
                 
                 if self.net is None or self.face_helper is None:
                     return np_image
-                
                 self.face_helper.clean_all()
                 self.face_helper.read_image(np_image)
                 self.face_helper.get_face_landmarks_5(only_center_face=False, resize=640, eye_dist_threshold=5)

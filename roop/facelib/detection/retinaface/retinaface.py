@@ -79,7 +79,7 @@ class RetinaFace():
         self.model_name = f'retinaface_{network_name}'
         self.cfg = cfg
         self.phase = phase
-        self.target_size, self.max_size = 1600, 2150
+        self.target_size, self.max_size = 640, 640# 1600, 2150
         self.resize, self.scale, self.scale1 = 1., None, None
         self.mean_tensor = torch.tensor([[[[104.]], [[117.]], [[123.]]]]).to(device)
         self.reference = get_reference_facial_points(default_square=True)
@@ -98,7 +98,6 @@ class RetinaFace():
         inputs = inputs.to(device)
         if self.half_inference:
             inputs = inputs.half()
-        
         loc, conf, landmarks = self.net([inputs.numpy()]) ################ self(inputs)
         loc, conf, landmarks = torch.from_numpy(loc), torch.from_numpy(conf), torch.from_numpy(landmarks)
 
@@ -128,7 +127,11 @@ class RetinaFace():
         # resize
         if resize != 1:
             image = cv2.resize(image, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
-
+        
+        padding_height = (self.target_size - image.shape[0]) // 2
+        padding_width = (self.target_size - image.shape[1]) // 2 
+        if not (padding_height == 0 and padding_width == 0):
+            image = np.pad(image, ((padding_height, self.target_size-image.shape[0]-padding_height), (padding_width, self.target_size-image.shape[1]-padding_width), (0, 0)), mode='constant')
         # convert to torch.tensor format
         # image -= (104, 117, 123)
         image = image.transpose(2, 0, 1)
@@ -141,13 +144,14 @@ class RetinaFace():
         image,
         conf_threshold=0.8,
         nms_threshold=0.4,
-        use_origin_size=True,
+        use_origin_size=False, ##########
     ):
         """
         Params:
             imgs: BGR image
         """
         image, self.resize = self.transform(image, use_origin_size)
+        import pdb; pdb.set_trace()
         image = image.to(device)
         if self.half_inference:
             image = image.half()

@@ -34,7 +34,7 @@ default_example = ["./example/angelazhang.jpg", "./example/c.png"]
 css = "h1 { text-align: center } .about { text-align: justify; padding-left: 10%; padding-right: 10%; }"
 
 
-with gr.Blocks(css=css, title="看图说话") as demo:
+with gr.Blocks(css=css, title="换脸") as demo:
     with gr.Row():
         with gr.Column(scale=1):
             # Title
