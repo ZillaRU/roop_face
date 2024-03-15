@@ -151,7 +151,6 @@ class RetinaFace():
             imgs: BGR image
         """
         image, self.resize = self.transform(image, use_origin_size)
-        import pdb; pdb.set_trace()
         image = image.to(device)
         if self.half_inference:
             image = image.half()
