@@ -19,7 +19,7 @@ def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, resto
         numpy_image = restorer.restore(numpy_image)
         restored_image = Image.fromarray(numpy_image)
         result_image = Image.blend(
-            ori_image, restored_image, restorer_visibility # 1.0 #upscale_options.restorer_visibility
+            pil_res, restored_image, restorer_visibility # 1.0 #upscale_options.restorer_visibility
         )
         return result_image
     else:
@@ -45,12 +45,12 @@ with gr.Blocks(css=css, title="看图说话") as demo:
             1. 上传人脸图像和目标图像，选择是否使用人像增强。
             2. 点击“换脸”。
             """
-    with gr.Row():
-        with gr.Column():
+    with gr.Column():
+        with gr.Row():
             img_input1 = gr.Image(label="人脸图像", value=default_example[0], sources=['upload'], type='pil')
             img_input2 = gr.Image(label="目标图像", value=default_example[1], sources=['upload'], type='pil')
             use_enhance_orN = gr.Checkbox(label="人像增强", value=True)
-        with gr.Column():
+        # with gr.Row():
             img_res = gr.Image(label="换脸图像", interactive=False)
             
 
