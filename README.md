@@ -17,6 +17,7 @@
 
 ## Web demo
 `python demo_app.py`，启动完成后终端会显示端口号，浏览器访问`盒子ip:端口号`即可。
+![example](https://github.com/ZillaRU/roop_face/assets/25343084/7486e419-5ef5-47ac-a10b-08b7e84a309a)
 
 ## API调用（示例见`example`文件夹）
 `python3 app_roop.py`，启动完成后服务在7019端口。
