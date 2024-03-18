@@ -68,7 +68,7 @@ def setup_model():
                     try:
                         with torch.no_grad(): # shared.opts.code_former_weight
                             # in: (1, 3, 512, 512)    out: (1, 3, 512, 512) (1, 256, 1024) (1, 256, 16, 16)
-                            output = self.net([cropped_face_t.numpy(), np.array([w if w is not None else 0.5])])[0]
+                            output = self.net([cropped_face_t.numpy(), np.array([w if w is not None else 0.5], dtype=np.float32)])[0] ## the dtype must be explicitly set
                             restored_face = tensor2img(torch.from_numpy(output), rgb2bgr=True, min_max=(-1, 1))
                         del output
                     except Exception:
