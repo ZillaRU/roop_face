@@ -12,7 +12,8 @@
 ## 环境搭建
 - `git clone https://github.com/ZillaRU/roop_face.git`
 - `cd roop_face`
-- 安装必要的包：`pip3 install torch torchvision opencv-python-headless flask==2.2.2 insightface onnxruntime gradio`，`pip3 install sophon_arm-0.0.0-py3-none-any.whl`
+- 安装必要的包：`pip3 install torch torchvision opencv-python-headless flask==2.2.2 insightface onnxruntime gradio`
+- 下载[tpu-perf包](https://github.com/sophgo/tpu-perf/releases/download/v1.2.35/tpu_perf-1.2.35-py3-none-manylinux2014_aarch64.whl), 并安装`pip3 install tpu-perf*.whl`。
 - [下载bmodel文件](https://drive.google.com/file/d/14EI7FUqfKsCGknSMvYblSUjDUAdusmn4/view?usp=sharing)，然后在项目根目录建立`bmodel_files`，解压（`tar xzvf bmodel_files.tar.gz`）并把bmodel文件放进去。
 
 ## Web demo
