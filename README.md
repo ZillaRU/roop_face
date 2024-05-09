@@ -1,4 +1,4 @@
-# 使用BM1684X实现换脸
+# 使用SG2300X实现换脸
 
 ## 效果展示
 将source image中的人脸换到target image上。
