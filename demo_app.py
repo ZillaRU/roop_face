@@ -27,7 +27,7 @@ def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, resto
 
 
 # Description
-title = f"<center><strong><font size='8'>人像换脸(●'◡'●) powered by 1684x <font></strong></center>"
+title = f"<center><strong><font size='8'>人像换脸(●'◡'●) powered by sg2300x <font></strong></center>"
 
 default_example = ["./example/angelazhang.jpg", "./example/c.png"]
 
