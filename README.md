@@ -13,10 +13,10 @@
 ### 2. 基于提示的人脸编辑
    方案为[SD-face-editor](https://github.com/yliuhz/sd-face-editor-jupyter)。pipeline概述如下：
    1. 上传需要编辑人脸的图片和提示词；
-   2. 检测人脸并分割出人脸区域；
+   2. 检测人脸并分割出人脸区域(BBOX)；
    3. 使用stable diffusion的图生图模式，根据提示词对人脸区域进行局部重绘；
    4. 将重绘区域贴回原图，对未重绘区域进行画质增强（可选）；
-   步骤 2 中，使用对其他目标进行检测、分割的模型（如  YOLO / GroundingDINO+SAM），也可以将这个 pipeline 扩展对其他部分的局部编辑。
+   步骤 2 中，使用对其他目标进行检测、分割的模型（如  YOLO / GroundingDINO + SAM + mask），也可以将这个 pipeline 扩展对其他部分的局部编辑。
    
 ### 3. 保持相貌的表情编辑（ID-preserving face editor）
    结合IP-adaptor-faceID， 多个 controlnet或者双 UNet，做SD1.5版的方案，TODO

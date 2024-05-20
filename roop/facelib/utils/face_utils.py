@@ -208,41 +208,37 @@ def paste_face_back(img, face, inverse_affine):
     return img
 
 
-# if __name__ == '__main__':
-#     import os
+def get_largest_face(det_faces, h, w):
 
-#     from facelib.detection import init_detection_model
-#     from facelib.utils.face_restoration_helper import get_largest_face
+    def get_location(val, length):
+        if val < 0:
+            return 0
+        elif val > length:
+            return length
+        else:
+            return val
 
-#     img_path = '/home/wxt/datasets/ffhq/ffhq_wild/00009.png'
-#     img_name = os.splitext(os.path.basename(img_path))[0]
+    face_areas = []
+    for det_face in det_faces:
+        left = get_location(det_face[0], w)
+        right = get_location(det_face[2], w)
+        top = get_location(det_face[1], h)
+        bottom = get_location(det_face[3], h)
+        face_area = (right - left) * (bottom - top)
+        face_areas.append(face_area)
+    largest_idx = face_areas.index(max(face_areas))
+    return det_faces[largest_idx], largest_idx
 
-#     # initialize model
-#     det_net = init_detection_model('retinaface_resnet50', half=False)
-#     img_ori = cv2.imread(img_path)
-#     h, w = img_ori.shape[0:2]
-#     # if larger than 800, scale it
-#     scale = max(h / 800, w / 800)
-#     if scale > 1:
-#         img = cv2.resize(img_ori, (int(w / scale), int(h / scale)), interpolation=cv2.INTER_LINEAR)
 
-#     with torch.no_grad():
-#         bboxes = det_net.detect_faces(img, 0.97)
-#     if scale > 1:
-#         bboxes *= scale  # the score is incorrect
-#     bboxes = get_largest_face(bboxes, h, w)[0]
-
-#     landmarks = np.array([[bboxes[i], bboxes[i + 1]] for i in range(5, 15, 2)])
-
-#     cropped_face, inverse_affine = align_crop_face_landmarks(
-#         img_ori,
-#         landmarks,
-#         output_size=512,
-#         transform_size=None,
-#         enable_padding=True,
-#         return_inverse_affine=True,
-#         shrink_ratio=(1, 1))
-
-#     cv2.imwrite(f'tmp/{img_name}_cropeed_face.png', cropped_face)
-#     img = paste_face_back(img_ori, cropped_face, inverse_affine)
-#     cv2.imwrite(f'tmp/{img_name}_back.png', img)
+def get_center_face(det_faces, h=0, w=0, center=None):
+    if center is not None:
+        center = np.array(center)
+    else:
+        center = np.array([w / 2, h / 2])
+    center_dist = []
+    for det_face in det_faces:
+        face_center = np.array([(det_face[0] + det_face[2]) / 2, (det_face[1] + det_face[3]) / 2])
+        dist = np.linalg.norm(face_center - center)
+        center_dist.append(dist)
+    center_idx = center_dist.index(min(center_dist))
+    return det_faces[center_idx], center_idx

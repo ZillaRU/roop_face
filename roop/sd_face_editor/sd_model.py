@@ -4,23 +4,8 @@ import cv2
 import torch
 from ..npuengine import EngineOV
 import numpy as np
-
-# codeformer people made a choice to include modified basicsr library to their project which makes
-# it utterly impossible to use it alongside with other libraries that also use basicsr, like GFPGAN.
-# I am making a choice to include some files from codeformer to work around this issue.
-# model_dir = "Codeformer"
-# model_path = os.path.join(models_path, model_dir)
-# model_url = 'https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth'
-
-codeformer = None
-
-
-class FaceRestoration:
-    def name(self):
-        return "None"
-
-    def restore(self, np_image):
-        return np_image
+from sd import StableDiffusionPipeline
+import random
 
 
 def setup_model():
@@ -31,25 +16,34 @@ def setup_model():
         from ..facelib.utils.face_restoration_helper import FaceRestoreHelper
 
 
-        class FaceRestorerCodeFormer(FaceRestoration):
+        class SDFaceEditor():
             def name(self):
-                return "CodeFormer"
+                return "SD-FaceEditor"
 
-            def __init__(self, bmodel_path='./bmodel_files/codeformer_1-3-512-512_1-235ms.bmodel'):
+            def __init__(self, sd_ckpt):
                 self.net = None
                 self.face_helper = None
-                self.create_models(bmodel_path)
+                self.create_models(sd_ckpt)
 
-            def create_models(self, bmodel_path): # ckpt_path='./weights/codeformer-v0.1.0.pth'):
+            def create_models(self, sd_ckpt):
                 if self.net is not None and self.face_helper is not None:
                     return self.net, self.face_helper
                 face_helper = FaceRestoreHelper(1, face_size=512, crop_ratio=(1, 1), det_model='retinaface_resnet50', save_ext='png', use_parse=True)#, device=devices.device_codeformer)
-                net = EngineOV(model_path=bmodel_path, device_id=0)
+                net = StableDiffusionPipeline(basic_model=sd_ckpt)
                 self.net = net
                 self.face_helper = face_helper
                 return net, face_helper
 
-            def restore(self, np_image, w=None):
+            def restore(self, np_image,
+                        prompt, 
+                        negative_prompt=None,
+                        step=4,
+                        strength=0.5,
+                        scheduler="LCM",
+                        guidance_scale=0.0,
+                        enable_prompt_weight=False,
+                        seed=None
+                        ):
                 np_image = np_image[:, :, ::-1]
 
                 original_resolution = np_image.shape[0:2]
@@ -68,11 +62,21 @@ def setup_model():
                     try:
                         with torch.no_grad(): # shared.opts.code_former_weight
                             # in: (1, 3, 512, 512)    out: (1, 3, 512, 512) (1, 256, 1024) (1, 256, 16, 16)
-                            output = self.net([cropped_face_t.numpy(), np.array([w if w is not None else 0.5], dtype=np.float32)])[0] ## the dtype must be explicitly set
-                            restored_face = tensor2img(torch.from_numpy(output), rgb2bgr=True, min_max=(-1, 1))
+                            output = self.net(
+                                 init_image=cropped_face_t, #rgb
+                                 prompt=prompt,
+                                 negative_prompt=negative_prompt,
+                                 num_inference_steps=step,
+                                 strength=strength,
+                                 scheduler=scheduler,
+                                 guidance_scale=guidance_scale,
+                                 enable_prompt_weight = enable_prompt_weight,
+                                 seeds=[random.randint(0, 1000000) if seed is None else seed]
+                                 ) # ([cropped_face_t.numpy(), np.array([w if w is not None else 0.5], dtype=np.float32)])[0] ## the dtype must be explicitly set
+                            restored_face = tensor2img(torch.from_numpy(np.array(output)), rgb2bgr=True, min_max=(-1, 1))
                         del output
                     except Exception:
-                        print('Failed inference for CodeFormer')
+                        print('Failed inference for SD-LCM')
                         restored_face = tensor2img(cropped_face_t, rgb2bgr=True, min_max=(-1, 1))
 
                     restored_face = restored_face.astype('uint8')
@@ -90,9 +94,9 @@ def setup_model():
 
                 return restored_img
         
-        return FaceRestorerCodeFormer()
+        return SDFaceEditor()
 
     except Exception as e:
         import traceback
         print(traceback.format_exc())
-        print("Error setting up CodeFormer")
+        print("Error setting up SD-FaceEditor")

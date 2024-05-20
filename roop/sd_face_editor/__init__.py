@@ -1,0 +1,1 @@
+from .sd_model import setup_model as setup_sd

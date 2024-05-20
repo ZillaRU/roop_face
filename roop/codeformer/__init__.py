@@ -1,1 +1,1 @@
-from .codeformer_model import setup_model
+from .codeformer_model import setup_model as setup_codeformer

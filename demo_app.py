@@ -4,12 +4,13 @@ import numpy as np
 import torch
 from PIL import Image
 import time
-from roop import setup_model, swap_face
+from roop import setup_codeformer, setup_sd, swap_face
 
 
-restorer = setup_model()
+restorer = setup_codeformer
+sd_edit_pipe = setup_sd
 
-def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, restorer_visibility=1.0):
+def face_swap_func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, restorer_visibility=1.0):
     src_img = source_img.convert('RGB')
     tar_img = target_img.convert('RGB')
     pil_res = swap_face(src_img, tar_img)
@@ -25,58 +26,159 @@ def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, resto
     else:
         return pil_res
 
+def face_enhance_func(source_img:Image.Image, restorer_visibility=1.0):
+    print(f"Restore face with Codeformer")
+    numpy_image = np.array(source_img)
+    numpy_image = restorer.restore(numpy_image)
+    restored_image = Image.fromarray(numpy_image)
+    result_image = Image.blend(
+        source_img, restored_image, restorer_visibility # 1.0 #upscale_options.restorer_visibility
+    )
+    return result_image
+
+def face_edit_func(source_img:Image.Image, prompt, strength, face_no=0, step=20, restorer_visibility=1.0):
+    print(f"Regenerate face with SD-LCM")
+    numpy_image = np.array(source_img)
+    numpy_image = sd_edit_pipe.restore(numpy_image)
+    restored_image = Image.fromarray(numpy_image)
+    result_image = Image.blend(
+        source_img, restored_image, restorer_visibility # 1.0 #upscale_options.restorer_visibility
+    )
+    return result_image
 
 # Description
-title = f"<center><strong><font size='8'>人像换脸(●'◡'●) powered by sg2300x <font></strong></center>"
+title = f"<center><strong><font size='8'>人脸编辑(●'◡'●) powered by sg2300x <font></strong></center>"
 
 default_example = ["./example/angelazhang.jpg", "./example/c.png"]
 
 css = "h1 { text-align: center } .about { text-align: justify; padding-left: 10%; padding-right: 10%; }"
 
-
-with gr.Blocks(css=css, title="换脸") as demo:
-    with gr.Row():
-        with gr.Column(scale=1):
-            # Title
-            gr.Markdown(title)
-
-    description_p = """ # 使用方法
-
-            1. 上传人脸图像和目标图像，选择是否使用人像增强。
-            2. 点击“换脸”。
-            """
-    with gr.Column():
+with gr.Tab(label="换脸"):
+    with gr.Blocks(css=css, title="换脸") as demo:
         with gr.Row():
-            img_input1 = gr.Image(label="人脸图像", value=default_example[0], sources=['upload'], type='pil')
-            img_input2 = gr.Image(label="目标图像", value=default_example[1], sources=['upload'], type='pil')
-            img_res = gr.Image(label="换脸图像", interactive=False)
-        with gr.Row():
-            use_enhance_orN = gr.Checkbox(label="人像增强", value=True)
-            
+            with gr.Column(scale=1):
+                # Title
+                gr.Markdown(title)
 
-    # Submit & Clear
-    with gr.Row():
+        description_p = """ # 使用方法
+
+                1. 上传人脸图像和目标图像，选择是否使用人像增强。
+                2. 点击“换脸”。
+                """
         with gr.Column():
             with gr.Row():
-                with gr.Column():
-                    btn_p = gr.Button(
-                        "换脸", variant="primary"
-                    )
-                    clear_btn_p = gr.Button("清空", variant="secondary")
+                img_input1 = gr.Image(label="人脸图像", value=default_example[0], sources=['upload'], type='pil')
+                img_input2 = gr.Image(label="目标图像", value=default_example[1], sources=['upload'], type='pil')
+                img_res = gr.Image(label="换脸图像", interactive=False)
+            with gr.Row():
+                use_enhance_orN = gr.Checkbox(label="人像增强", value=True)
+                
+
+        # Submit & Clear
+        with gr.Row():
+            with gr.Column():
+                with gr.Row():
+                    with gr.Column():
+                        btn_p = gr.Button(
+                            "换脸", variant="primary"
+                        )
+                        clear_btn_p = gr.Button("清空", variant="secondary")
 
 
+            with gr.Column():
+                # Description
+                gr.Markdown(description_p)
+
+        btn_p.click(
+            face_swap_func, inputs=[img_input1, img_input2, use_enhance_orN], outputs=[img_res]
+        )
+        def clear():
+            return [None, None, None]
+
+        clear_btn_p.click(clear, outputs=[img_input1, img_input2, img_res])
+
+with gr.Tab(label="人脸增强"):
+    with gr.Blocks(css=css, title="人脸增强") as demo:
+        with gr.Row():
+            with gr.Column(scale=1):
+                # Title
+                gr.Markdown(title)
+
+        description_p = """ # 使用方法
+
+                1. 上传人像图片。
+                2. 点击“修复”。
+                """
+        with gr.Row():
+            img_input = gr.Image(label="修复前", sources=['upload'], type='pil')
+            img_res = gr.Image(label="修复后", interactive=False)
+                
+
+        # Submit & Clear
+        with gr.Row():
+            with gr.Column():
+                with gr.Row():
+                    with gr.Column():
+                        btn_p = gr.Button(
+                            "修复", variant="primary"
+                        )
+                        clear_btn_p = gr.Button("清空", variant="secondary")
+
+
+            with gr.Column():
+                # Description
+                gr.Markdown(description_p)
+
+        btn_p.click(
+            face_enhance_func, inputs=[img_input], outputs=[img_res]
+        )
+        def clear():
+            return [None, None]
+
+        clear_btn_p.click(clear, outputs=[img_input, img_res])
+
+with gr.Tab(label="人脸重绘"):
+    with gr.Blocks(css=css, title="人脸重绘") as demo:
+        with gr.Row():
+            with gr.Column(scale=1):
+                # Title
+                gr.Markdown(title)
+
+        description_p = """ # 使用方法
+
+                1. 上传人像图片，填写人脸重绘参数，包括【对人脸（表情、外貌等）的描述、生图step 和 重绘强度，需要编辑的人脸从左到右的序号（从0 开始）。
+                2. 点击“重绘人脸”。
+                """
         with gr.Column():
-            # Description
-            gr.Markdown(description_p)
+            with gr.Row():
+                img_input = gr.Image(label="人像", value=default_example[0], sources=['upload'], type='pil')
+                img_res = gr.Image(label="结果", interactive=False)
+            with gr.Row():
+                repaint_bg_orN = gr.Checkbox(label="背景重绘", value=False)
+                
 
-    btn_p.click(
-        func, inputs=[img_input1, img_input2, use_enhance_orN], outputs=[img_res]
-    )
-    def clear():
-        return [None, None, None]
+        # Submit & Clear
+        with gr.Row():
+            with gr.Column():
+                with gr.Row():
+                    with gr.Column():
+                        btn_p = gr.Button(
+                            "重绘", variant="primary"
+                        )
+                        clear_btn_p = gr.Button("清空", variant="secondary")
 
-    clear_btn_p.click(clear, outputs=[img_input1, img_input2, img_res])
 
+            with gr.Column():
+                # Description
+                gr.Markdown(description_p)
+
+        btn_p.click(
+            face_edit_func, inputs=[img_input, use_enhance_orN], outputs=[img_res]
+        )
+        def clear():
+            return [None, None]
+
+        clear_btn_p.click(clear, outputs=[img_input, img_res])
 
 demo.queue()
 demo.launch(ssl_verify=False, server_name="0.0.0.0")
