@@ -175,6 +175,8 @@ class StableDiffusionPipeline:
             if image.mode != "RGB":
                 image = image.convert("RGB") # RGBA or other -> RGB
             image = np.array(image)
+        if torch.is_tensor(image):
+            image = image.squeeze(0).numpy().transpose(1, 2, 0)
         assert isinstance(image, np.ndarray)
         h, w = image.shape[:-1]
         if h != self.init_image_shape[1] or w != self.init_image_shape[0]:
@@ -1209,6 +1211,6 @@ class StableDiffusionPipeline:
         self.cur_step = 0
         latents = latents / 0.18215 
         image = self.vae_decoder({"input.1": latents.astype(np.float32)})[0]
-        image = (image / 2 + 0.5).clip(0, 1)
-        image = (image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB
-        return Image.fromarray(image)
+        # image = (image / 2 + 0.5).clip(0, 1)
+        # image = (image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB
+        return image # Image.fromarray(image)
