@@ -55,15 +55,15 @@ def setup_model():
                 self.face_helper.align_warp_face()
 
                 for cropped_face in self.face_helper.cropped_faces:
-                    cropped_face_t = img2tensor(cropped_face / 255., bgr2rgb=True, float32=True)
-                    normalize(cropped_face_t, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
-                    cropped_face_t = cropped_face_t.unsqueeze(0)#.to(devices.device_codeformer)
+                    #cropped_face_t = img2tensor(cropped_face / 255., bgr2rgb=True, float32=True)
+                    #normalize(cropped_face_t, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
+                    #cropped_face_t = cropped_face_t.unsqueeze(0)#.to(devices.device_codeformer)
                     try:
                         with torch.no_grad(): # shared.opts.code_former_weight
                             # in: (1, 3, 512, 512)    out: (1, 3, 512, 512) (1, 256, 1024) (1, 256, 16, 16)
                             import pdb; pdb.set_trace()
                             output = self.net(
-                                 init_image=cropped_face_t, #rgb
+                                 init_image=cropped_face[:,:,::-1], #rgb
                                  prompt=prompt,
                                  negative_prompt=negative_prompt,
                                  num_inference_steps=step,
@@ -77,7 +77,7 @@ def setup_model():
                         del output
                     except Exception:
                         print('Failed inference for SD-LCM')
-                        restored_face = tensor2img(cropped_face_t, rgb2bgr=True, min_max=(-1, 1))
+                        restored_face = cropped_face # tensor2img(cropped_face_t, rgb2bgr=True, min_max=(-1, 1))
                     
                     restored_face = restored_face.astype('uint8')
                     self.face_helper.add_restored_face(restored_face)

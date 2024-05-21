@@ -1208,9 +1208,11 @@ class StableDiffusionPipeline:
             end_time = time.time()
             print("time cost: ", end_time - start_time)
             latents = latents.numpy()
+        print(latents)
         self.cur_step = 0
         latents = latents / 0.18215 
         image = self.vae_decoder({"input.1": latents.astype(np.float32)})[0]
-        # image = (image / 2 + 0.5).clip(0, 1)
-        # image = (image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB
+        pil_image = (image / 2 + 0.5).clip(0, 1)
+        pil_image = (pil_image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB
+        Image.fromarray(pil_image).save("debug.jpg")
         return image # Image.fromarray(image)
