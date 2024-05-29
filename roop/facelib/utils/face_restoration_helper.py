@@ -6,7 +6,7 @@ from torchvision.transforms.functional import normalize
 
 from ..detection import init_detection_model
 from ..utils.misc import img2tensor, imwrite
-from .. import EngineOV
+from npuengine import EngineOV
 from .face_utils import get_center_face, get_largest_face
 
 class FaceRestoreHelper(object):

@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 # from ..utils import face_align
 from insightface.utils import face_align
-from .npuengine import EngineOV #############
+from npuengine import EngineOV #############
 
 
 class INSwapper():

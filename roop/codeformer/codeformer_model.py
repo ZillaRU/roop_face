@@ -2,7 +2,7 @@ import os
 
 import cv2
 import torch
-from ..npuengine import EngineOV
+from npuengine import EngineOV
 import numpy as np
 
 # codeformer people made a choice to include modified basicsr library to their project which makes

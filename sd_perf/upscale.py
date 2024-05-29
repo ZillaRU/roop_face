@@ -1,6 +1,6 @@
 from PIL import Image
 import numpy as np
-from .npuengine import EngineOV
+from npuengine import EngineOV
 import math
 from .fix import *
 

@@ -1,9 +1,9 @@
 import os
 import cv2
 import torch
-from ..npuengine import EngineOV
+from npuengine import EngineOV
 import numpy as np
-from sd import StableDiffusionPipeline
+from sd_perf import StableDiffusionPipeline
 import random
 
 

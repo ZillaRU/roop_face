@@ -4,11 +4,11 @@ import numpy as np
 import torch
 from PIL import Image
 import time
-from roop import setup_codeformer, setup_sd, swap_face
+from roop import setup_codeformer, swap_face #,setup_sd
 
 
 restorer = setup_codeformer()
-sd_edit_pipe = setup_sd()
+# sd_edit_pipe = setup_sd()
 
 def face_swap_func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, restorer_visibility=1.0):
     src_img = source_img.convert('RGB')
@@ -35,7 +35,7 @@ def face_enhance_func(source_img:Image.Image, restorer_visibility=1.0):
         source_img, restored_image, restorer_visibility # 1.0 #upscale_options.restorer_visibility
     )
     return result_image
-
+'''
 def face_edit_func(source_img:Image.Image, prompt, step=4, strength=0.5, enhance=False, face_no=0, restorer_visibility=1.0):
     print(f"Regenerate face with SD-LCM")
     numpy_image = np.array(source_img)
@@ -45,7 +45,7 @@ def face_edit_func(source_img:Image.Image, prompt, step=4, strength=0.5, enhance
         source_img, restored_image, restorer_visibility # 1.0 #upscale_options.restorer_visibility
     )
     return result_image
-
+'''
 # Description
 title = f"<center><strong><font size='8'>人脸编辑(●'◡'●) powered by sg2300x <font></strong></center>"
 
@@ -129,7 +129,7 @@ with gr.Blocks(css=css, title=title) as demo:
             return [None, None]
 
         clear_btn_p.click(clear, outputs=[img_input, img_res])
-
+    '''
     with gr.Tab(label="人脸重绘"):
         description_p = """ # 使用方法
 
@@ -171,6 +171,6 @@ with gr.Blocks(css=css, title=title) as demo:
             return [None, None]
 
         clear_btn_p.click(clear, outputs=[img_input, img_res])
-
+        '''
 demo.queue()
 demo.launch(ssl_verify=False, server_name="0.0.0.0")

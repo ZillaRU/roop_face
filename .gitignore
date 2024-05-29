@@ -2,6 +2,7 @@
 *.pyc
 *.bmodel
 *.npy
+*.npz
 *.onnx
 tmp
 bmodel*
