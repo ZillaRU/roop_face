@@ -61,7 +61,6 @@ def setup_model():
                     try:
                         with torch.no_grad(): # shared.opts.code_former_weight
                             # in: (1, 3, 512, 512)    out: (1, 3, 512, 512) (1, 256, 1024) (1, 256, 16, 16)
-                            import pdb; pdb.set_trace()
                             output = self.net(
                                  init_image=cropped_face[:,:,::-1], #rgb
                                  prompt=prompt,
@@ -73,13 +72,13 @@ def setup_model():
                                  enable_prompt_weight = enable_prompt_weight,
                                  seeds=[random.randint(0, 1000000) if seed is None else seed]
                                  ) # ([cropped_face_t.numpy(), np.array([w if w is not None else 0.5], dtype=np.float32)])[0] ## the dtype must be explicitly set
-                            restored_face = tensor2img(torch.from_numpy(output), rgb2bgr=True, min_max=(-1, 1))
+                            restored_face = np.array(output)[:,:,::-1] # tensor2img(torch.from_numpy(output), rgb2bgr=True, min_max=(-1, 1))
                         del output
                     except Exception:
                         print('Failed inference for SD-LCM')
                         restored_face = cropped_face # tensor2img(cropped_face_t, rgb2bgr=True, min_max=(-1, 1))
                     
-                    restored_face = restored_face.astype('uint8')
+                    # restored_face = restored_face.astype('uint8')
                     self.face_helper.add_restored_face(restored_face)
 
                 self.face_helper.get_inverse_affine(None)

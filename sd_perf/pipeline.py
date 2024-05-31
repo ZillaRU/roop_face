@@ -34,25 +34,6 @@ def seed_torch(seed=1029):
     torch.manual_seed(seed)
     print("set seed to:", seed)
 
-sd_controlnet_unet_default_link_map = {
-        (0,0):(0,0),
-        (0,1):(0,2),
-        (0,3):(0,1),
-        (1,0):(0,4),
-        (1,1):(0,5),
-        (1,2):(0,6),
-        (1,3):(0,7),
-        (1,4):(0,8),
-        (1,5):(0,9),
-        (1,6):(0,10),
-        (1,7):(0,11),
-        (1,8):(0,12),
-        (1,9):(0,13),
-        (1,10):(0,14),
-        (1,11):(0,15),
-        (1,12):(0,3),
-    }
-
 
 class StableDiffusionPipeline:
     def __init__(
@@ -86,9 +67,6 @@ class StableDiffusionPipeline:
         # unet_multize.bmodel
         self.unet_pure = EngineOV("./models/basic/{}/{}".format(
             basic_model, model_path[basic_model]['unet']), device_id=self.device_id)
-        # self.unet_pure.check_and_move_to_device()
-        self.unet_pure.default_input()
-        # self.unet_pure.default_input()
         print("====================== Load UNET in ", time.time()-st_time)
         
         self.unet_lora = None
@@ -103,18 +81,16 @@ class StableDiffusionPipeline:
             basic_model, model_path[basic_model]['vae_encoder']), device_id=self.device_id)
         print("====================== Load VAE EN in ", time.time()-st_time)
         
-        # controlnet_name = None if "controlnet" not in model_path[basic_model] else model_path[basic_model]["controlnet"]
         if controlnet_name:
-            self.controlnet = EngineOV("./models/controlnet/{}.bmodel".format(controlnet_name), device_id=self.device_id)
-            unet_controlnet_map = {v:k for k,v in sd_controlnet_unet_default_link_map.items()}
-            link_bmodel(self.unet_pure, self.controlnet, unet_controlnet_map)
-            self.controlnet.fill_io_max()
-            self.controlnet.check_and_move_to_device()
-            self.controlnet.default_input()
+            st_time = time.time()
+            self.controlnet = EngineOV("./models/controlnet/{}.bmodel".format(
+                controlnet_name), device_id=self.device_id)
+            print("====================== Load CN in ", time.time()-st_time)
         else:
             self.controlnet = None
-
+        
         self.tile_contorlnet = None
+        
         self.unet = self.unet_pure
         self.tile_controlnet_name = "tile_multize"
         self.controlnet_name = controlnet_name
@@ -126,10 +102,7 @@ class StableDiffusionPipeline:
         self.default_args()
         print(self.text_encoder, self.unet, self.vae_decoder,
               self.vae_encoder, self.controlnet)
-        self.cur_step = 0
-        self.controlnet_start = -1
-        self.controlnet_end   = -1
-
+    
     def set_lora(self, lora_state):
         if lora_state: # set to unet_lora
             if self.unet == self.unet_lora:
@@ -157,6 +130,13 @@ class StableDiffusionPipeline:
     def _preprocess_mask(self, mask):
         if self.handle_masked:
             return mask
+        h, w = mask.shape
+        if h != self.init_image_shape[0] and w != self.init_image_shape[1]:
+            mask = cv2.resize(
+                mask,
+                (self.init_image_shape[1], self.init_image_shape[0]),
+                interpolation=cv2.INTER_NEAREST
+            )
         mask = cv2.resize(
             mask,
             (self.init_image_shape[1] // 8, self.init_image_shape[0] // 8),
@@ -173,8 +153,6 @@ class StableDiffusionPipeline:
             if image.mode != "RGB":
                 image = image.convert("RGB") # RGBA or other -> RGB
             image = np.array(image)
-        if torch.is_tensor(image):
-            image = image.squeeze(0).numpy().transpose(1, 2, 0)
         assert isinstance(image, np.ndarray)
         h, w = image.shape[:-1]
         if h != self.init_image_shape[1] or w != self.init_image_shape[0]:
@@ -197,10 +175,10 @@ class StableDiffusionPipeline:
         mean, logvar = np.split(moments, 2, axis=1)
         std = np.exp(logvar * 0.5)
         latent = (mean + std * np.random.randn(*mean.shape)) * 0.18215
-        import pdb; pdb.set_trace()
         return latent
 
     def _prepare_image(self, image, controlnet_args={}):
+        print("do not use controlnet_args")
         width, height = self.init_image_shape
         if isinstance(image, Image.Image):
             image = image
@@ -210,18 +188,16 @@ class StableDiffusionPipeline:
         image = np.array(image).astype(np.float32) / 255.0
         image = image.transpose(2, 0, 1)
         image = image[None, :]
-        return image # only for batch == 1
+        return np.concatenate((image, image), axis=0)
 
     def _prepare_canny_image(self, image, controlnet_args={}):
         image = np.array(image)
-        low_threshold = controlnet_args.get("low_threshold", 70)
-        high_threshold = controlnet_args.get("high_threshold", 100)
+        low_threshold = controlnet_args.get("low_threshold", 100)
+        high_threshold = controlnet_args.get("high_threshold", 200)
         image = cv2.Canny(image, low_threshold, high_threshold)
         image = image[:, :, None]
         image = np.concatenate([image, image, image], axis=2)
         image = Image.fromarray(image)
-        if controlnet_args.get("save_canny", False):
-            image.save("canny.jpg")
         return image
 
     def _prepare_hed_image(self, image, controlnet_args={}):
@@ -243,38 +219,10 @@ class StableDiffusionPipeline:
 
     def _after_upscale(self):
         self._before_upscale()
-      
-    def generate_zero_controlnet_data(self):
-        res = []
-        res.append(np.zeros((2, 320, self._height//8,
-                   self._width//8)).astype(np.float32))
-        res.append(np.zeros((2, 320, self._height//8,
-                   self._width//8)).astype(np.float32))
-        res.append(np.zeros((2, 320, self._height//8,
-                   self._width//8)).astype(np.float32))
-        res.append(np.zeros((2, 320, self._height//16,
-                   self._width//16)).astype(np.float32))
-        res.append(np.zeros((2, 640, self._height//16,
-                   self._width//16)).astype(np.float32))
-        res.append(np.zeros((2, 640, self._height//16,
-                   self._width//16)).astype(np.float32))
-        res.append(np.zeros((2, 640, self._height//32,
-                   self._width//32)).astype(np.float32))
-        res.append(np.zeros((2, 1280, self._height//32,
-                   self._width//32)).astype(np.float32))
-        res.append(np.zeros((2, 1280, self._height//32,
-                   self._width//32)).astype(np.float32))
-        res.append(np.zeros((2, 1280, self._height//64,
-                   self._width//64)).astype(np.float32))
-        res.append(np.zeros((2, 1280, self._height//64,
-                   self._width//64)).astype(np.float32))
-        res.append(np.zeros((2, 1280, self._height//64,
-                   self._width//64)).astype(np.float32))
-        res.append(np.zeros((2, 1280, self._height//64,
-                   self._width//64)).astype(np.float32))
-        return res
 
-    def run_unet_bk(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
+    def run_unet(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
+        if text_embedding.shape[0] != 1:
+            text_embedding = text_embedding[None, :, :]
         if controlnet_img is not None and self.controlnet is not None:            
             controlnet_res = self.controlnet({"latent": latent.astype(np.float32),  # #### conditioning_scale=controlnet_conditioning_scale,
                                               "prompt_embeds": text_embedding,
@@ -289,7 +237,7 @@ class StableDiffusionPipeline:
         down_block_additional_residuals = controlnet_res[:-1]
         mid_block_additional_residual = controlnet_res[-1]
         res = self.unet([latent.astype(np.float32), t, text_embedding,
-                        mid_block_additional_residual, *down_block_additional_residuals])
+                        mid_block_additional_residual, *down_block_additional_residuals])[0]
         return res
 
     def call_back_method(self):
@@ -403,9 +351,11 @@ class StableDiffusionPipeline:
 
         image = batch_images
         image = 2. * image - 1.0
+
+        # 如果image不在合理的范围之内，我们需要做resize并对上下游都需要做resize
         self.init_latent = self.encoder_with_resize(image, upscale=True)  # img encoder的内容
 
-        if image_mask is not None:
+        if image_mask is not None:  # 还是处理init_latent内容
             init_mask = latent_mask
             if self.upscale_resize:
                 init_mask = init_mask.resize(
@@ -513,7 +463,7 @@ class StableDiffusionPipeline:
                                seams_fix={},
                                seams_fix_enable=False)
         self._after_upscale()
-
+        # warp 接受所有参数 并调用 handle_inpaint_image 实现即可
         # args: prompt, negative_prompt, init_image, mask, strength, controlnet_img, num_inference_steps, guidance_scale, seeds, subseeds, subseed_strength, seed_resize_from_h, seed_resize_from_w, controlnet_args, controlnet_weight, upscale
         return res
 
@@ -696,34 +646,8 @@ class StableDiffusionPipeline:
     def free_tpu_runtime(self):
         self.text_encoder.free_runtime()
         self.unet_pure.free_runtime()
-        self.vae_encoder.free_runtime()
-        self.vae_decoder.free_runtime()
 
-    def free_controlnet_runtime(self):
-        if self.controlnet != None:
-            self.controlnet.free_runtime()
-            self.controlnet = None
-            self.controlnet_name = None
-
-    def change_controlnet(self, controlnet):
-        self.free_controlnet_runtime()
-        if controlnet == None:
-            self.controlnet = None
-            self.controlnet_name = None
-        else:
-            st_time = time.time()
-            self.controlnet = EngineOV("./models/controlnet/{}.bmodel".format(
-                controlnet), device_id=self.device_id)
-            unet_controlnet_map = {v:k for k,v in sd_controlnet_unet_default_link_map.items()}
-            link_bmodel(self.unet_pure, self.controlnet, unet_controlnet_map)
-            self.controlnet.fill_io_max()
-            self.controlnet.check_and_move_to_device()
-            self.controlnet.default_input()
-            self.controlnet_name = controlnet
-            print("====================== Load CONTROLNET in ", time.time() - st_time)
-
-
-    def change_lora(self, basic_model):
+    def change_lora(self, basic_model, size):
         self.free_tpu_runtime()
         self.basemodel_name = basic_model
 
@@ -735,266 +659,57 @@ class StableDiffusionPipeline:
         st_time = time.time()
         # unet_multize.bmodel
         self.unet_pure = EngineOV("./models/basic/{}/{}".format(
-            basic_model, model_path[basic_model]['unet']), device_id=self.device_id)
-
+            basic_model, model_path[basic_model]['unet'][str(size)]), device_id=self.device_id)
         self.unet_pure.default_input()
         print("====================== Load UNET in ", time.time() - st_time)
+
         self.unet = self.unet_pure
-        self.vae_decoder = EngineOV("./models/basic/{}/{}".format(
-            basic_model, model_path[basic_model]['vae_decoder']), device_id=self.device_id)
-        print("====================== Load VAE DE in ", time.time() - st_time)
+        print(self.text_encoder, self.unet, self.vae_decoder,
+              self.vae_encoder, self.controlnet)
+
+    def change_unet(self, basic_model, size):
+        self.unet_pure.free_runtime()
 
         st_time = time.time()
-        self.vae_encoder = EngineOV("./models/basic/{}/{}".format(
-            basic_model, model_path[basic_model]['vae_encoder']), device_id=self.device_id)
-        print("====================== Load VAE EN in ", time.time() - st_time)
+        # unet_multize.bmodel
+        self.unet_pure = EngineOV("./models/basic/{}/{}".format(
+            basic_model, model_path[basic_model]['unet'][str(size)]), device_id=self.device_id)
+        self.unet_pure.default_input()
+        print("====================== Load UNET in ", time.time() - st_time)
 
+        self.unet = self.unet_pure
         print(self.text_encoder, self.unet, self.vae_decoder,
-              self.vae_encoder)
+              self.vae_encoder, self.controlnet)
 
-    def handle_controlnet_weight(self,controlnet_weight=1.0 ):
-        if abs(controlnet_weight - 1) < 1e-2:
-            return 
-        if self.controlnet is not None :
-            for i in range(len(self.controlnet.outputs)):
-                if controlnet_weight != 0:
-                    self.controlnet.outputs[i].find_father().cpu()
-                self.controlnet.outputs[i].find_father().npy__ *= controlnet_weight
-                self.controlnet.outputs[i].find_father().npu()
-
-    def judge_use_controlnet(self, controlnet_img, controlnet_weight=1.0):
-        if controlnet_img is None or self.controlnet is None:
-            return False
-        if self.controlnet_start == -1:
-            return False
-        if self.cur_step < self.controlnet_start:
-            return False
-        if self.cur_step > self.controlnet_end + 1:
-            return False
-        if self.cur_step == self.controlnet_end + 1:
-            self.handle_controlnet_weight(0)
-            print("cur drop controlnet ", self.cur_step, " controlnet start : ", self.controlnet_start, " controlnet end : ", self.controlnet_end)
-            return False
-        return True
-
-    def controlnet_run(self,latent, t, text_embedding, controlnet_img, controlnet_weight=1.0 ):
-        if not self.judge_use_controlnet(controlnet_img, controlnet_weight):
-            return False
-        controlnet_input_map = None
-        if self.cur_step == self.controlnet_start:
-            if self.cur_step == 0:
-                controlnet_input_map = [latent.astype(np.float32), text_embedding, controlnet_img, t]
-            else:
-                controlnet_input_map = {
-                    0: {
-                        "data": latent.astype(np.float32),
-                        "flag": 0
-                    },
-                    2: {
-                        "data": controlnet_img,
-                        "flag": 0
-                    },
-                    3: {
-                        "data": t,
-                        "flag": 0
-                    }
-                }
-        else:
-            controlnet_input_map = {
-                0: {
-                    "data": latent.astype(np.float32),
-                    "flag": 0
-                },
-                3: {
-                    "data": t,
-                    "flag": 0
-                }
-            }
-        self.controlnet.run_with_np(controlnet_input_map)
-        self.handle_controlnet_weight(controlnet_weight)
-        print("have controlnet ", self.cur_step)
-        return True
-
-    def run_cfg_unet_controlnet_step(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
-        assert(self.cur_step > 0)
-        controlnet_input_map = {
-            0: {
-                "data": latent.astype(np.float32),
-                "flag": 0
-            },
-            1: {
-                "data": text_embedding[0],
-                "flag": 0
-            },
-            3: {
-                "data": t,
-                "flag": 0
-            }
-        }
-        self.controlnet.run_with_np(controlnet_input_map)
-        cf_unet_res = self.unet.run_with_np()
-        controlnet_input_map = {
-            1: {
-                "data": text_embedding[1],
-                "flag": 0
-            },
-        }
-        self.controlnet.run_with_np(controlnet_input_map)
-        self.handle_controlnet_weight(controlnet_weight)
-        c_unet_res = self.unet.run_with_np()
-        res = [np.concatenate((cf_unet_res[0], c_unet_res[0]), axis=0)]
+    def generate_zero_controlnet_data(self, _batch = 1):
+        res = []
+        res.append(np.zeros((_batch, 320, self._height//8,
+                   self._width//8)).astype(np.float32))
+        res.append(np.zeros((_batch, 320, self._height//8,
+                   self._width//8)).astype(np.float32))
+        res.append(np.zeros((_batch, 320, self._height//8,
+                   self._width//8)).astype(np.float32))
+        res.append(np.zeros((_batch, 320, self._height//16,
+                   self._width//16)).astype(np.float32))
+        res.append(np.zeros((_batch, 640, self._height//16,
+                   self._width//16)).astype(np.float32))
+        res.append(np.zeros((_batch, 640, self._height//16,
+                   self._width//16)).astype(np.float32))
+        res.append(np.zeros((_batch, 640, self._height//32,
+                   self._width//32)).astype(np.float32))
+        res.append(np.zeros((_batch, 1280, self._height//32,
+                   self._width//32)).astype(np.float32))
+        res.append(np.zeros((_batch, 1280, self._height//32,
+                   self._width//32)).astype(np.float32))
+        res.append(np.zeros((_batch, 1280, self._height//64,
+                   self._width//64)).astype(np.float32))
+        res.append(np.zeros((_batch, 1280, self._height//64,
+                   self._width//64)).astype(np.float32))
+        res.append(np.zeros((_batch, 1280, self._height//64,
+                   self._width//64)).astype(np.float32))
+        res.append(np.zeros((_batch, 1280, self._height//64,
+                   self._width//64)).astype(np.float32))
         return res
-
-    def run_cfg_unet_controlnet_first_step(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
-        assert(self.cur_step == 0)
-        controlnet_input_map = {
-            0: {
-                "data": latent.astype(np.float32),
-                "flag": 0
-            },
-            1: {
-                "data": text_embedding[0],
-                "flag": 0
-            },
-            2: {
-                "data": controlnet_img,
-                "flag": 0
-            },
-            3: {
-                "data": t,
-                "flag": 0
-            }
-        }
-        self.controlnet.run_with_np(controlnet_input_map)
-        print("cfg have controlnet ", self.cur_step)
-        cf_unet_res = self.unet.run_with_np()
-        controlnet_input_map = {
-            1: {
-                "data": text_embedding[1],
-                "flag": 0
-            },
-        }
-        self.controlnet.run_with_np(controlnet_input_map)
-        self.handle_controlnet_weight(controlnet_weight)
-        c_unet_res = self.unet.run_with_np()
-        res = [np.concatenate((cf_unet_res[0], c_unet_res[0]), axis=0)]
-        return res
-
-    def run_unet_with_cfg(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
-        if self.cur_step == 0:
-            return self.run_unet_with_cfg_first_step(latent, t, text_embedding, controlnet_img, controlnet_weight)
-        use_controlnet_flag = self.judge_use_controlnet(controlnet_img, controlnet_weight)
-        if use_controlnet_flag:
-            res = self.run_cfg_unet_controlnet_step(latent, t, text_embedding, controlnet_img, controlnet_weight)
-        else:
-            # negative prompt
-            unet_input_map = {
-                0: {
-                    "data": latent.astype(np.float32),
-                    "flag": 0
-                },
-                1: {
-                    "data": t,
-                    "flag": 0
-                },
-                2: {
-                    "data": text_embedding[0],
-                    "flag": 0
-                }
-            }
-            cf_res = self.unet.run_with_np(unet_input_map) # cf_res: class_free res 
-            # positive prompt
-            unet_input_map = {
-                2: {
-                    "data": text_embedding[1],
-                    "flag": 0
-                }
-            }
-            c_res = self.unet.run_with_np(unet_input_map) # c_res: class res 
-            res = [np.concatenate((cf_res[0], c_res[0]), axis=0)] # total res
-        self.cur_step += 1
-        return res
-
-    def run_unet_with_cfg_first_step(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
-        use_controlnet_flag = self.judge_use_controlnet(controlnet_img, controlnet_weight)
-        if use_controlnet_flag:
-            res = self.run_cfg_unet_controlnet_first_step(latent, t, text_embedding, controlnet_img, controlnet_weight)
-        else:
-            unet_input_map = {
-                0: {
-                    "data": latent.astype(np.float32),
-                    "flag": 0
-                },
-                1: {
-                    "data": t,
-                    "flag": 0
-                },
-                2: {
-                    "data": text_embedding[0],
-                    "flag": 0
-                }
-            }
-            cf_res = self.unet.run_with_np(unet_input_map)[0]
-            unet_input_map = {
-                2: {
-                    "data": text_embedding[1],
-                    "flag": 0
-                }
-            }
-            c_res = self.unet.run_with_np(unet_input_map)[0]
-            res = [np.concatenate((cf_res, c_res), axis=0)]
-        self.cur_step += 1
-        return res
-
-    def run_unet(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
-        if text_embedding.shape[0] == 2:
-            return self.run_unet_with_cfg(latent, t, text_embedding, controlnet_img, controlnet_weight)
-        # default use untool 
-        if self.cur_step == 0:
-            return self.run_unet_untool_first_step(latent, t, text_embedding, controlnet_img, controlnet_weight)
-        use_controlnet_flag = self.controlnet_run(latent, t, text_embedding, controlnet_img, controlnet_weight)
-        if use_controlnet_flag:
-            res = self.unet.run_with_np()
-        else:
-            unet_input_map = {
-                0: {
-                    "data": latent.astype(np.float32),
-                    "flag": 0
-                },
-                1: {
-                    "data": t,
-                    "flag": 0
-                }
-            }
-            res = self.unet.run_with_np(unet_input_map)
-            
-        self.cur_step += 1
-        return res
-
-    def run_unet_untool_first_step(self, latent, t, text_embedding, controlnet_img, controlnet_weight=1.0):
-        use_controlnet_flag = self.controlnet_run(latent, t, text_embedding, controlnet_img, controlnet_weight) 
-        if use_controlnet_flag:
-            self.unet.get_stage_by_shape(latent.shape, 0)
-            res = self.unet.run_with_np()
-        else:
-            unet_input_map = {
-                0: {
-                    "data": latent.astype(np.float32),
-                    "flag": 0
-                },
-                1: {
-                    "data": t,
-                    "flag": 0
-                },
-                2: {
-                    "data": text_embedding,
-                    "flag": 0
-                }
-            }
-            res = self.unet.run_with_np(unet_input_map)
-        self.cur_step += 1
-        return res
-
 
     def __call__(
             self,
@@ -1020,8 +735,12 @@ class StableDiffusionPipeline:
             scheduler=None,
             generator=None
     ):  
+        #seed_torch(seeds[0])
         init_steps = num_inference_steps
         using_paint = mask is not None and using_paint  # mask 不在就没有paint
+        if self.controlnet_name and controlnet_img is None and init_image is not None and use_controlnet:
+            controlnet_img = init_image
+        self.controlnet_args = {}
 
         if enable_prompt_weight:
             text_embeddings = self.tokenizer_forward([prompt])
@@ -1029,6 +748,7 @@ class StableDiffusionPipeline:
                 if negative_prompt is None:
                     negative_prompt = ""
             uncond_embeddings = self.tokenizer_forward([negative_prompt])
+            # 确保shape正确，填充或截断到77
             if uncond_embeddings.shape[1] > 77:
                 uncond_embeddings = uncond_embeddings[:, :77]
             elif uncond_embeddings.shape[1] < 77:
@@ -1045,7 +765,7 @@ class StableDiffusionPipeline:
                 padding="max_length",
                 max_length=self.tokenizer.model_max_length,
                 truncation=True
-            ).input_ids
+            ).input_ids  # 换tokenizer后 此处一致
             # text_embedding use npu engine to inference
             text_embeddings = self.text_encoder(
                 {"tokens": np.array([tokens]).astype(np.int32)})[0]
@@ -1067,27 +787,23 @@ class StableDiffusionPipeline:
                 {"tokens": np.array([tokens_uncond], dtype=np.int32)})[0]
             text_embeddings = np.concatenate((uncond_embeddings, text_embeddings), axis=0)
         
-        if guidance_scale <=1.0:
-            text_embeddings = text_embeddings[1]
         # controlnet image prepare
         if self.controlnet_name is not None and len(self.controlnet_name)!=0 and controlnet_img is not None: # PIL Image
             controlnet_img = self.preprocess_controlnet_image(controlnet_img)
             if self.controlnet_name == "hed_multize":
                 controlnet_img = self._prepare_hed_image(controlnet_img)
             elif self.controlnet_name == "canny_multize":
-                controlnet_img = self._prepare_canny_image(controlnet_img, controlnet_args)
+                controlnet_img = self._prepare_canny_image(controlnet_img)
             elif self.controlnet_name in ["tile_multize"]:
                 controlnet_img = controlnet_img
             else:
                 raise NotImplementedError()
             controlnet_img = self._prepare_image(controlnet_img)
-            self.controlnet_start = controlnet_args.get("start",0)
-            self.controlnet_end   = controlnet_args.get("end",-1)
-            if self.controlnet_start != -1 and self.controlnet_end == -1:
-                self.controlnet_end = num_inference_steps
-            print("controlnet start : ", self.controlnet_start, " controlnet end : ", self.controlnet_end)
+        
         # handle latents
         shape = self.latent_shape
+        # 这里是torch manual seed = seeds[0]
+
         # initialize latent
         if init_image is not None:
             init_latents = torch.from_numpy(self._encode_image(init_image))
@@ -1100,7 +816,8 @@ class StableDiffusionPipeline:
             mask = self._preprocess_mask(mask)
         else:
             mask = None
-        if scheduler not in ["DDIM","DPM Solver++", "LCM" ] and not self.is_v2 or (self.is_v2 and scheduler in ['Euler', None]):
+        
+        if scheduler != "LCM" and not self.is_v2 or (self.is_v2 and scheduler in ['Euler', None]):
             # run scheduler
             if scheduler is not None:
                 self.scheduler = scheduler
@@ -1125,6 +842,7 @@ class StableDiffusionPipeline:
             elif scheduler == "DPM Solver++":
                 self.scheduler = DPMSolverMultistepScheduler(**(diffusers_scheduler_config['DPM Solver++']))
             elif scheduler == "LCM":
+                print('CAUTION')
                 self.scheduler = LCMScheduler(**(diffusers_scheduler_config['LCM']))
             else:
                 self.scheduler = DPMSolverMultistepScheduler(**(diffusers_scheduler_config['DPM Solver++']))
@@ -1150,27 +868,27 @@ class StableDiffusionPipeline:
             else:
                 latents = rand_latents
                 timesteps = self.scheduler.timesteps
-            self.controlnet_end = self.controlnet_end if self.controlnet_start == -1 else min(self.controlnet_end, num_inference_steps)
+            
             # Denoising loop
             do_classifier_free_guidance = guidance_scale > 1.0
             # num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
             extra_step_kwargs = {}
+
             print("step = ", num_inference_steps)
             print("strength = ", strength)
             print("real inference step = ", timesteps)
             start_time = time.time()
             for i, t in tqdm(enumerate(timesteps)):
                 # expand the latents if we are doing classifier free guidance
-                latent_model_input = latents
+                latent_model_input = torch.cat([latents]*2) if do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
                 latent_model_input = latent_model_input.numpy()
                 timestamp = np.array([t])
-                if controlnet_img is not None and controlnet_img.shape[0] > 1:
-                    controlnet_img = controlnet_img[0]
-                import pdb; pdb.set_trace()
-                noise_pred = self.run_unet(latent_model_input, timestamp, text_embeddings, controlnet_img, controlnet_weight)[0]
+                # perform guidance
+                noise_pred = self.run_unet(latent_model_input, timestamp.astype(np.float32), text_embeddings[-1].astype(np.float32), controlnet_img, controlnet_weight=1.0)
+
                 if do_classifier_free_guidance:
-                    noise_pred_uncond, noise_pred_text = np.split(noise_pred, 2, axis=0)
+                    noise_pred_uncond, noise_pred_text = np.split(noise_pred, 2)
                     noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
 
                 # compute the previous noisy sample x_t -> x_t-1
@@ -1183,11 +901,8 @@ class StableDiffusionPipeline:
             end_time = time.time()
             print("time cost: ", end_time - start_time)
             latents = latents.numpy()
-        print(latents)
-        self.cur_step = 0
         latents = latents / 0.18215 
         image = self.vae_decoder({"input.1": latents.astype(np.float32)})[0]
-        pil_image = (image / 2 + 0.5).clip(0, 1)
-        pil_image = (pil_image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB
-        Image.fromarray(pil_image).save("debug.jpg")
-        return image # Image.fromarray(image)
+        image = (image / 2 + 0.5).clip(0, 1)
+        image = (image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB
+        return Image.fromarray(image)

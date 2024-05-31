@@ -83,7 +83,6 @@ class RetinaFace():
         self.resize, self.scale, self.scale1 = 1., None, None
         self.mean_tensor = torch.tensor([[[[104.]], [[117.]], [[123.]]]]).to(device)
         self.reference = get_reference_facial_points(default_square=True)
-        import pdb; pdb.set_trace()
         self.net = EngineOV(model_path, device_id=0)
 
 

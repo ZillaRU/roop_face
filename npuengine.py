@@ -11,11 +11,12 @@ class EngineOV:
         if "DEVICE_ID" in os.environ:
             device_id = int(os.environ["DEVICE_ID"])
             print(">>>> device_id is in os.environ. and device_id = ",device_id)
+        self.model_path = model_path
         self.model = SGInfer(model_path , batch=batch, devices=[device_id])
+        self.device_id = device_id
         
     def __str__(self):
         return "EngineOV: model_path={}, device_id={}".format(self.model_path,self.device_id)
-    
         
     def __call__(self, args):
         start = time.time()
@@ -79,9 +80,9 @@ if __name__ == '__main__':
         
         # 4. 加载BModel
         bmodel = EngineOV(bmodel_path)
-        input_data['processed_lens'] = input_data['processed_lens'].astype(np.int32)
+        #input_data['processed_lens'] = input_data['processed_lens'].astype(np.int32)
         # 5. BModel推理
         bmodel_results = bmodel(input_data)
-    
+        import pdb;pdb.set_trace()
         # 6. 比较结果
         compare_results(onnx_results, bmodel_results)
