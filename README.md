@@ -30,14 +30,16 @@
 
 ## Web demo
 `python demo_app.py`，启动完成后终端会显示端口号，浏览器访问`盒子ip:端口号`即可。
-### Tab 1：换脸 + 人脸增强
+### Tab 1：换脸
 <img width="848" alt="仅换脸" src="https://github.com/ZillaRU/roop_face/assets/25343084/022d1564-2d9b-4c6f-ba33-a5ab04adc3d3">
 
 <img width="848" alt="换脸 + 人脸增强" src="https://github.com/ZillaRU/roop_face/assets/25343084/81bc5c89-970f-469b-a8f5-e8a2d735a436">
 
-### Tab2：表情编辑
+### Tab2：人脸增强
 
-### Tab3：保持相貌的表情编辑 TODO
+### Tab3：表情编辑
+
+### Tab4：保持相貌的表情编辑 TODO
 
 ##  换脸API调用（示例见`example`文件夹）
 `python3 api_roop.py`，启动完成后服务在7019端口。
