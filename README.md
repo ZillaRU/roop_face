@@ -37,7 +37,8 @@
 
 ### Tab2：人脸增强
 
-### Tab3：表情编辑
+### Tab3：人脸编辑
+<img width="848" alt="换脸 + 人脸增强" src="https://github.com/ZillaRU/roop_face/assets/25343084/7b70ed51-92c9-422c-89be-fefe484c316c">
 
 ### Tab4：保持相貌的表情编辑 TODO
 
