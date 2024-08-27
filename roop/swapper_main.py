@@ -12,11 +12,9 @@ import logging
 logging.basicConfig(level=logging.ERROR)
 
 import insightface
-from .inswappertpu import INSwapper ##############
 # from roop_logging import logger
 
 providers = ["CPUExecutionProvider"]
-face_swapper_tpu = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
 
 class FaceRestoration:
     def name(self):
@@ -74,6 +72,7 @@ class ImageResult:
 
 
 def swap_face(
+    face_swapper_tpu,
     source_img: Image.Image,
     target_img: Image.Image,
     faces_index: Set[int] = {0}

@@ -23,7 +23,7 @@ class FaceRestoration:
         return np_image
 
 
-def setup_model():
+def setup_model(bmodel_path):
     # os.makedirs(model_path, exist_ok=True)
     try:
         from torchvision.transforms.functional import normalize
@@ -35,7 +35,7 @@ def setup_model():
             def name(self):
                 return "CodeFormer"
 
-            def __init__(self, bmodel_path='./bmodel_files/codeformer_1-3-512-512_1-235ms.bmodel'):
+            def __init__(self, bmodel_path):
                 self.net = None
                 self.face_helper = None
                 self.create_models(bmodel_path)

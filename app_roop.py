@@ -9,6 +9,11 @@ import logging
 # 设置日志级别
 logging.basicConfig(level=logging.ERROR)
 # engine
+from roop.inswappertpu import INSwapper ##############
+# from roop_logging import logger
+
+providers = ["CPUExecutionProvider"]
+
 from roop import setup_model, swap_face
 import time
 
@@ -16,7 +21,8 @@ app = Flask(__name__)
 
 @app.before_first_request
 def load_model():
-    app.config['restorer'] = setup_model()
+    app.config['face_swapper'] = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
+    app.config['restorer'] = setup_model('./bmodel_files/codeformer_1-3-512-512_1-235ms.bmodel')
 
 
 @app.route('/face_swap', methods=['POST'])
@@ -33,7 +39,7 @@ def swap_face_api():
     src_image = Image.open(src_image_bytes)
     tar_image_bytes = BytesIO(base64.b64decode(tar_image_b64))
     tar_image = Image.open(tar_image_bytes)
-    pil_res = swap_face(src_image, tar_image)
+    pil_res = swap_face(app.config['face_swapper'], src_image, tar_image)
     buffer = io.BytesIO()
     pil_res.save(buffer, format='JPEG')
     ret_img_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')

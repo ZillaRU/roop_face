@@ -5,14 +5,15 @@ import torch
 from PIL import Image
 import time
 from roop import setup_model, swap_face
+from roop.inswappertpu import INSwapper
 
-
-restorer = setup_model()
+restorer = setup_model('./bmodel_files/codeformer_1-3-512-512_1-235ms.bmodel')
+inswapper = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
 
 def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, restorer_visibility=1.0):
     src_img = source_img.convert('RGB')
     tar_img = target_img.convert('RGB')
-    pil_res = swap_face(src_img, tar_img)
+    pil_res = swap_face(inswapper, src_img, tar_img)
     if use_enhance:
         print(f"Restore face with Codeformer")
         numpy_image = np.array(pil_res)
