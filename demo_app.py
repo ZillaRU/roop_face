@@ -8,7 +8,7 @@ from roop import setup_model, swap_face
 from roop.inswappertpu import INSwapper
 
 restorer = setup_model('./bmodel_files/codeformer_1-3-512-512_1-235ms.bmodel')
-inswapper = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
+inswapper = INSwapper("./bmodel_files")
 
 def func(source_img:Image.Image, target_img:Image.Image, use_enhance=True, restorer_visibility=1.0):
     src_img = source_img.convert('RGB')

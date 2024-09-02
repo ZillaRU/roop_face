@@ -6,16 +6,15 @@ from .npuengine import EngineOV #############
 
 
 class INSwapper():
-    def __init__(self, model_file=None, session=None):
-        self.model_file = model_file
+    def __init__(self, model_dir=None, session=None):
+        self.model_file = f"{model_dir}/inswapper_128_F16.bmodel"
         self.session = session
-        self.emap = np.load("./bmodel_files/emap.npy")
+        self.emap = np.load(f"{model_dir}/emap.npy")
         self.input_mean = 0.0
         self.input_std = 255.0
         self.session = EngineOV(self.model_file)
-        input_shape = [1, 3, 128, 128]
         self.input_shape = [1, 3, 128, 128]
-        self.input_size = tuple(input_shape[2:4][::-1])
+        self.input_size = (128, 128)
 
     def forward(self, img, latent):
         img = (img - self.input_mean) / self.input_std

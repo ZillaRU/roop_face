@@ -1,10 +1,7 @@
 opencv-python-headless
-sophon-arm -f sophon_arm-0.0.0-py3-none-any.whl
 torch==2.0.1 
 torchvision==0.15.2 
-opencv-python-headless 
 flask==2.2.2 
 insightface 
 onnxruntime 
 gradio
-https://github.com/ZillaRU/AigcHub-TPU/releases/download/v0.1/tpu_perf-1.2.35-py3-none-manylinux2014_aarch64.whl

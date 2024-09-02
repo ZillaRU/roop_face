@@ -40,7 +40,7 @@ def setup_model(bmodel_path):
                 self.face_helper = None
                 self.create_models(bmodel_path)
 
-            def create_models(self, bmodel_path): # ckpt_path='./weights/codeformer-v0.1.0.pth'):
+            def create_models(self, bmodel_path):
                 if self.net is not None and self.face_helper is not None:
                     return self.net, self.face_helper
                 face_helper = FaceRestoreHelper(1, face_size=512, crop_ratio=(1, 1), det_model='retinaface_resnet50', save_ext='png', use_parse=True)#, device=devices.device_codeformer)
@@ -90,7 +90,7 @@ def setup_model(bmodel_path):
 
                 return restored_img
         
-        return FaceRestorerCodeFormer()
+        return FaceRestorerCodeFormer(bmodel_path=bmodel_path)
 
     except Exception as e:
         import traceback

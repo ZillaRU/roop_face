@@ -21,7 +21,7 @@ app = Flask(__name__)
 
 @app.before_first_request
 def load_model():
-    app.config['face_swapper'] = INSwapper("./bmodel_files/inswapper_128_F16.bmodel")
+    app.config['face_swapper'] = INSwapper("./bmodel_files")
     app.config['restorer'] = setup_model('./bmodel_files/codeformer_1-3-512-512_1-235ms.bmodel')
 
 
