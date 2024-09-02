@@ -8,7 +8,7 @@ if [ ! -d "bmodel_files" ]; then
     rm -rf bmodel_files.tar.gz
 fi
 
-if [ ! -d "onnx_weights/buffalo_l"]; then
+if [ ! -d "onnx_weights/buffalo_l" ]; then
     mkdir onnx_weights
     cd onnx_weights
     wget https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip
